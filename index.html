@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Relationship Mapping — NDP</title>
+<meta name="description" content="Relationship mapping tool for community organizing">
+<meta name="theme-color" content="#F58220">
+<link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiUmVsYXRpb25zaGlwIE1hcHBpbmciLCJzaG9ydF9uYW1lIjoiUmVsTWFwIiwic3RhcnRfdXJsIjoiLi8iLCJkaXNwbGF5Ijoic3RhbmRhbG9uZSIsImJhY2tncm91bmRfY29sb3IiOiIjZmZmZmZmIiwidGhlbWVfY29sb3IiOiIjRjU4MjIwIn0=">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Source+Serif+4:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Roboto,'Segoe UI',sans-serif;background:#fff;color:#58595B;-webkit-font-smoothing:antialiased}
+h1,h2{font-family:'Source Serif 4',serif}
+.container{max-width:600px;margin:0 auto;padding:16px;min-height:100vh}
+.lbl{display:block;font-size:11px;font-weight:600;color:#58595B;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px;font-family:Roboto,sans-serif}
+.inp{width:100%;padding:8px 10px;font-size:14px;border:1.5px solid #E2E3E4;border-radius:6px;outline:none;font-family:Roboto,sans-serif;box-sizing:border-box;color:#58595B}
+.inp:focus{border-color:#F58220}
+.btn{padding:5px 14px;font-size:12px;font-weight:600;border-radius:6px;cursor:pointer;font-family:Roboto,sans-serif;transition:opacity 0.15s}
+.btn:hover{opacity:0.85}
+.btn-primary{background:#F58220;color:#fff;border:none}
+.btn-outline{background:none;border:1.5px solid #E2E3E4;color:#58595B}
+.btn-outline.active{border-color:#F58220;background:#F5822010;color:#F58220}
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px}
+.modal{background:#fff;border-radius:12px;padding:20px;width:100%;max-width:440px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+.badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;display:inline-block}
+.ring-summary{display:flex;gap:4px;margin-bottom:14px}
+.ring-box{flex:1;text-align:center;padding:8px 4px;background:#fff;border-radius:6px;cursor:pointer}
+.card{background:#fff;border-radius:8px;padding:10px 14px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:flex-start;cursor:pointer}
+.sync-indicator{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:2px 8px;border-radius:10px}
+.sync-ok{background:#2a7d4f15;color:#2a7d4f}
+.sync-pending{background:#F5822015;color:#F58220}
+.sync-offline{background:#E2E3E4;color:#58595B}
+.sync-error{background:#cc333315;color:#cc3333}
+.outreach-panel{display:flex;flex-direction:column;gap:8px;padding:10px;background:#f9f9f9;border-radius:8px}
+@media(max-width:400px){.container{padding:10px}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel" data-type="module">
+const {useState,useEffect,useRef,useCallback}=React;
+
+// ── IndexedDB storage ──
+const DB='rm-db',STORE='data';
+function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open(DB,1);
+  r.onupgradeneeded=()=>r.result.createObjectStore(STORE);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);})}
+async function dbGet(key){const db=await openDB();return new Promise((res,rej)=>{
+  const tx=db.transaction(STORE,'readonly'),r=tx.objectStore(STORE).get(key);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);})}
+async function dbSet(key,val){const db=await openDB();return new Promise((res,rej)=>{
+  const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(val,key);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error);})}
+
+// ── Constants ──
+const RINGS=[
+  {id:0,label:"Inner Circle",desc:"Trusted allies you'd call first",color:"#D4690A",bg:"rgba(245,130,32,0.22)"},
+  {id:1,label:"Active Network",desc:"People you know and can call on",color:"#E8860F",bg:"rgba(245,130,32,0.14)"},
+  {id:2,label:"Broader Community",desc:"Acquaintances and contacts",color:"#F5A050",bg:"rgba(245,130,32,0.08)"},
+  {id:3,label:"Prospects",desc:"People to research or approach",color:"#D4B896",bg:"rgba(245,130,32,0.04)"},
+];
+const RING_ACCENT=["#D4690A","#E8860F","#F5A050","#D4B896"];
+const CHANNELS=["Labour","Climate / Environment","Housing / Anti-Poverty","Indigenous Solidarity",
+  "Post-Secondary / Education","Health / Social Services","Arts / Culture","Francophone",
+  "Municipal Politics","Faith Communities","Equity-Seeking Communities","Youth","Disability","Other"];
+const METHODS=["Phone","Text Message","Email","In Person","Door Knock","Social Media","Other"];
+const RESULTS=["Interested","Committed","Follow Up Needed","Left Message","No Answer","Not Interested","Declined","Wrong Number"];
+const EMPTY={firstName:"",lastName:"",organization:"",channel:"",phone:"",email:"",knownNDP:"Unknown",notes:"",
+  outreachStatus:"Not Contacted",contactMethod:"",contactDate:"",contactResult:"",contactNotes:""};
+const NDP_LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABnIAAAEsCAYAAAD3my0NAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAABAFpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNi1jMTQ1IDc5LjE2MzQ5OSwgMjAxOC8wOC8xMy0xNjo0MDoyMiAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOmRjPSJodHRwOi8vcHVybC5vcmcvZGMvZWxlbWVudHMvMS4xLyIgeG1wTU06T3JpZ2luYWxEb2N1bWVudElEPSJ1dWlkOjVEMjA4OTI0OTNCRkRCMTE5MTRBODU5MEQzMTUwOEM4IiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOjBBQTNFNjBEM0QzRjExRTlCM0MyODZBNTJBNUMzMDI4IiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOjBBQTNFNjBDM0QzRjExRTlCM0MyODZBNTJBNUMzMDI4IiB4bXA6Q3JlYXRvclRvb2w9IkFkb2JlIElsbHVzdHJhdG9yIENDIDIyLjEgKE1hY2ludG9zaCkiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDpBNTJBRkFGRTEwNDUxMUU5ODJEQkEwQjc2QzFCRjY1QSIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDpC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";
+function gid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+
+function App(){
+  const [contacts,setContacts]=useState([]);
+  const [orgFirst,setOrgFirst]=useState("");
+  const [orgLast,setOrgLast]=useState("");
+  const [syncUrl,setSyncUrl]=useState("");
+  const [onboarding,setOnboarding]=useState(true);
+  const [showForm,setShowForm]=useState(false);
+  const [showSettings,setShowSettings]=useState(false);
+  const [activeRing,setActiveRing]=useState(null);
+  const [editingId,setEditingId]=useState(null);
+  const [formData,setFormData]=useState({...EMPTY});
+  const [selected,setSelected]=useState(null);
+  const [filterCh,setFilterCh]=useState("All");
+  const [filterStatus,setFilterStatus]=useState("All");
+  const [view,setView]=useState("map");
+  const [loaded,setLoaded]=useState(false);
+  const [syncState,setSyncState]=useState("idle"); // idle|syncing|ok|error|offline|pending
+  const [lastSync,setLastSync]=useState(null);
+  const [onbFirst,setOnbFirst]=useState("");
+  const [onbLast,setOnbLast]=useState("");
+  const [onbUrl,setOnbUrl]=useState("");
+  const syncTimer=useRef(null);
+  const pendingSync=useRef(false);
+
+  const migrateContact=(c)=>{
+    let out={...c};
+    if(out.firstName===undefined){const parts=(out.name||"").trim().split(/\s+/);
+      const ln=parts.length>1?parts.pop():"";out.firstName=parts.join(" ");out.lastName=ln;}
+    if(out.outreachStatus===undefined){out.outreachStatus="Not Contacted";out.contactMethod="";out.contactDate="";out.contactResult="";out.contactNotes="";}
+    return out;
+  };
+
+  // Load
+  useEffect(()=>{(async()=>{
+    try{const d=await dbGet("appdata");
+      if(d){setContacts((d.contacts||[]).map(migrateContact));setSyncUrl(d.syncUrl||"");setLastSync(d.lastSync||null);
+        if(d.orgFirst){setOrgFirst(d.orgFirst);setOrgLast(d.orgLast||"");setOnboarding(false);}}}
+    catch(e){console.log("No saved data")}
+    setLoaded(true);
+  })();},[]);
+
+  // Save to IndexedDB on every change
+  useEffect(()=>{if(!loaded)return;
+    dbSet("appdata",{contacts,orgFirst,orgLast,syncUrl,lastSync}).catch(console.error);
+  },[contacts,orgFirst,orgLast,syncUrl,lastSync,loaded]);
+
+  // Auto-sync with debounce
+  const doSync=useCallback(async()=>{
+    if(!syncUrl.trim()||contacts.length===0)return;
+    if(!navigator.onLine){setSyncState("offline");pendingSync.current=true;return;}
+    setSyncState("syncing");
+    try{
+      const resp=await fetch(syncUrl.trim(),{method:"POST",headers:{"Content-Type":"text/plain"},
+        body:JSON.stringify({action:"sync",organizer:`${orgFirst} ${orgLast}`.trim(),contacts}),
+        redirect:"follow"});
+      // Apps Script redirects, but the data is received
+      setSyncState("ok");setLastSync(new Date().toISOString());pendingSync.current=false;
+      setTimeout(()=>setSyncState("idle"),3000);
+    }catch(e){
+      console.error("Sync failed:",e);
+      if(!navigator.onLine){setSyncState("offline");pendingSync.current=true;}
+      else{setSyncState("error");pendingSync.current=true;setTimeout(()=>setSyncState("pending"),4000);}
+    }
+  },[syncUrl,contacts,orgFirst,orgLast]);
+
+  // Debounced auto-sync on contact changes
+  useEffect(()=>{if(!loaded||!syncUrl.trim()||onboarding)return;
+    if(syncTimer.current)clearTimeout(syncTimer.current);
+    setSyncState("pending");
+    syncTimer.current=setTimeout(()=>doSync(),3000);
+    return()=>{if(syncTimer.current)clearTimeout(syncTimer.current);};
+  },[contacts,loaded,syncUrl,onboarding]);
+
+  // Sync when coming back online
+  useEffect(()=>{
+    const handler=()=>{if(pendingSync.current)doSync();};
+    window.addEventListener("online",handler);
+    return()=>window.removeEventListener("online",handler);
+  },[doSync]);
+
+  const organizer=`${orgFirst} ${orgLast}`.trim();
+  const displayName=(c)=>`${c.firstName} ${c.lastName}`.trim();
+  const initials=(c)=>{const f=c.firstName?c.firstName[0]:"";const l=c.lastName?c.lastName[0]:"";return(f+l).toUpperCase()||"?";};
+
+  const sortedContacts=(list)=>[...list].sort((a,b)=>{
+    if(a.ring!==b.ring)return a.ring-b.ring;
+    const cmp=(a.lastName||"").localeCompare(b.lastName||"");
+    return cmp!==0?cmp:(a.firstName||"").localeCompare(b.firstName||"");
+  });
+
+  const exportCSV=()=>{
+    const h=["Organizer First Name","Organizer Last Name","Ring","First Name","Last Name","Organization","Channel","Phone","Email","Known NDP","Outreach Status","Contact Method","Contact Date","Contact Result","Contact Notes","Notes"];
+    const rows=sortedContacts(contacts).map(c=>
+      [orgFirst,orgLast,RINGS[c.ring].label,c.firstName,c.lastName,c.organization,c.channel,
+        c.phone||"",c.email||"",c.knownNDP||"Unknown",c.outreachStatus||"Not Contacted",
+        c.contactMethod||"",c.contactDate||"",c.contactResult||"",
+        (c.contactNotes||"").replace(/"/g,'""'),(c.notes||"").replace(/"/g,'""')]
+    );
+    const csv=[h,...rows].map(r=>r.map(v=>`"${v}"`).join(",")).join("\n");
+    const blob=new Blob([csv],{type:"text/csv"});const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download="relationship-mapping.csv";a.click();URL.revokeObjectURL(url);
+  };
+
+  const startMapping=()=>{if(!onbFirst.trim()||!onbLast.trim())return;
+    setOrgFirst(onbFirst.trim());setOrgLast(onbLast.trim());setSyncUrl(onbUrl.trim());setOnboarding(false);};
+  const openAdd=(ringId)=>{setActiveRing(ringId);setEditingId(null);setFormData({...EMPTY});setShowForm(true);setSelected(null);};
+  const openEdit=(c)=>{setActiveRing(c.ring);setEditingId(c.id);
+    setFormData({firstName:c.firstName,lastName:c.lastName,organization:c.organization,channel:c.channel,
+      phone:c.phone||"",email:c.email||"",knownNDP:c.knownNDP||"Unknown",notes:c.notes||"",
+      outreachStatus:c.outreachStatus||"Not Contacted",contactMethod:c.contactMethod||"",
+      contactDate:c.contactDate||"",contactResult:c.contactResult||"",contactNotes:c.contactNotes||""});
+    setShowForm(true);setSelected(null);};
+  const save=()=>{if(!formData.firstName.trim()||!formData.lastName.trim())return;
+    const cleaned={...formData};
+    if(cleaned.outreachStatus==="Not Contacted"){cleaned.contactMethod="";cleaned.contactDate="";cleaned.contactResult="";cleaned.contactNotes="";}
+    if(editingId){setContacts(p=>p.map(c=>c.id===editingId?{...c,...cleaned,ring:activeRing}:c));}
+    else{setContacts(p=>[...p,{id:gid(),ring:activeRing,...cleaned,angle:Math.random()*360}]);}
+    setShowForm(false);setFormData({...EMPTY});};
+  const del=(id)=>{setContacts(p=>p.filter(c=>c.id!==id));setSelected(null);setShowForm(false);};
+  const move=(id,nr)=>{setContacts(p=>p.map(c=>c.id===id?{...c,ring:nr}:c));};
+
+  let filtered=filterCh==="All"?contacts:contacts.filter(c=>c.channel===filterCh);
+  if(filterStatus!=="All") filtered=filtered.filter(c=>(c.outreachStatus||"Not Contacted")===filterStatus);
+  const rc=RINGS.map(r=>filtered.filter(c=>c.ring===r.id).length);
+  const contactedCount=contacts.filter(c=>c.outreachStatus==="Contacted").length;
+
+  const statusBadge=(c)=>{
+    const s=c.outreachStatus||"Not Contacted";
+    if(s==="Contacted"){
+      const r=c.contactResult||"";
+      const colors={Interested:"#2a7d4f",Committed:"#1a5c36","Follow Up Needed":"#E8860F","Left Message":"#58595B",
+        "No Answer":"#58595B","Not Interested":"#cc3333",Declined:"#cc3333","Wrong Number":"#cc3333"};
+      return {text:r||"Contacted",bg:`${colors[r]||"#D4690A"}15`,color:colors[r]||"#D4690A"};
+    }
+    return {text:"Not Contacted",bg:"#E2E3E4",color:"#58595B"};
+  };
+
+  const syncLabel={idle:"",syncing:"Syncing…",ok:"Synced",error:"Sync failed",offline:"Offline",pending:"Unsaved"}[syncState];
+  const syncClass={idle:"",syncing:"sync-pending",ok:"sync-ok",error:"sync-error",offline:"sync-offline",pending:"sync-pending"}[syncState];
+
+  // ── Onboarding ──
+  if(onboarding) return(
+    <div className="container" style={{display:"flex",flexDirection:"column",justifyContent:"center"}}>
+      <div style={{textAlign:"center",marginBottom:24}}>
+        <img src={NDP_LOGO} alt="NDP / NPD" style={{height:40,marginBottom:16}}/>
+      </div>
+      <h1 style={{fontSize:28,color:"#58595B",textAlign:"center"}}>Relationship Mapping</h1>
+      <p style={{fontSize:14,color:"#58595B",margin:"12px 0 24px",lineHeight:1.5,textAlign:"center"}}>
+        Map the people you know across your organizing networks. Start from your closest allies and work outward.</p>
+      <div style={{background:"#fff",border:"2px solid #F58220",borderRadius:10,padding:20}}>
+        <div style={{display:"flex",gap:8,marginBottom:14}}>
+          <div style={{flex:1}}><label className="lbl">First name</label>
+            <input className="inp" value={onbFirst} onChange={e=>setOnbFirst(e.target.value)} placeholder="First" autoFocus/></div>
+          <div style={{flex:1}}><label className="lbl">Last name</label>
+            <input className="inp" value={onbLast} onChange={e=>setOnbLast(e.target.value)} onKeyDown={e=>e.key==="Enter"&&startMapping()} placeholder="Last"/></div>
+        </div>
+        <div style={{marginBottom:14}}>
+          <label className="lbl">Sync URL <span style={{textTransform:"none",fontWeight:400}}>(optional — add later in Settings)</span></label>
+          <input className="inp" value={onbUrl} onChange={e=>setOnbUrl(e.target.value)} placeholder="https://script.google.com/macros/s/…/exec"/>
+        </div>
+        <button onClick={startMapping} disabled={!onbFirst.trim()||!onbLast.trim()}
+          className="btn btn-primary" style={{width:"100%",padding:"10px 0",fontSize:14,opacity:(onbFirst.trim()&&onbLast.trim())?1:0.4}}>
+          Start Mapping</button>
+      </div>
+      <div style={{marginTop:20,padding:16,background:"#f8f8f8",borderRadius:8,borderLeft:"4px solid #F58220"}}>
+        <div style={{fontSize:12,fontWeight:700,color:"#58595B",marginBottom:8}}>How it works</div>
+        <div style={{fontSize:12,color:"#58595B",lineHeight:1.6}}>
+          <strong style={{color:"#D4690A"}}>Inner Circle</strong> — five people you'd call tonight for a meeting tomorrow.{" "}
+          <strong style={{color:"#E8860F"}}>Active Network</strong> — people you know personally and could ask.{" "}
+          <strong style={{color:"#F5A050"}}>Broader Community</strong> — acquaintances you've met.{" "}
+          <strong style={{color:"#D4B896"}}>Prospects</strong> — people identified but not yet approached.</div>
+      </div>
+    </div>
+  );
+
+  // ── Map ──
+  const renderMap=()=>{
+    const size=520,cx=size/2,cy=size/2,radii=[52,118,184,250];
+    return(
+    <div style={{display:"flex",justifyContent:"center",padding:"8px 0"}}>
+      <svg viewBox={`0 0 ${size} ${size}`} style={{width:"100%",maxWidth:520,height:"auto"}}>
+        {[...RINGS].reverse().map((ring,i)=>{const ri=3-i;
+          return <circle key={ring.id} cx={cx} cy={cy} r={radii[ri]} fill={ring.bg} stroke={RING_ACCENT[ri]}
+            strokeWidth={1.5} strokeDasharray={ri===3?"6 4":"none"} style={{cursor:"pointer"}} onClick={()=>openAdd(ring.id)}/>;
+        })}
+        <image href={NDP_LOGO} x={cx-35} y={cy-10} width={70} height={13} opacity={0.8} preserveAspectRatio="xMidYMid meet"/>
+        <text x={cx} y={cy+12} textAnchor="middle" fill="#58595B" fontSize="7" fontFamily="Roboto,sans-serif">click ring to add</text>
+        {RINGS.map((ring,i)=>
+          <text key={"l"+ring.id} x={cx} y={cy-radii[i]+14} textAnchor="middle" fill={ring.color}
+            fontSize="9" fontWeight="600" fontFamily="Roboto,sans-serif" style={{pointerEvents:"none"}}>
+            {ring.label} ({rc[i]})</text>
+        )}
+        {filtered.map(contact=>{
+          const r=radii[contact.ring]*0.65,angle=(contact.angle||0)*(Math.PI/180);
+          const x=cx+r*Math.cos(angle),y=cy+r*Math.sin(angle);
+          const isSel=selected?.id===contact.id,clr=RING_ACCENT[contact.ring];
+          const contacted=(contact.outreachStatus||"Not Contacted")==="Contacted";
+          return(
+            <g key={contact.id} style={{cursor:"pointer"}} onClick={e=>{e.stopPropagation();setSelected(isSel?null:contact);}}>
+              <circle cx={x} cy={y} r={isSel?14:10} fill={isSel?clr:contacted?"#e8f5e9":"white"} stroke={contacted?"#2a7d4f":clr} strokeWidth={2}/>
+              <text x={x} y={y+1} textAnchor="middle" dominantBaseline="middle" fill={isSel?"white":clr}
+                fontSize="7" fontWeight="700" fontFamily="Roboto,sans-serif" style={{pointerEvents:"none"}}>
+                {initials(contact)}</text>
+            </g>);
+        })}
+      </svg>
+    </div>);
+  };
+
+  // ── Card ──
+  const renderCard=(contact)=>{
+    const sb=statusBadge(contact);
+    return(
+    <div key={contact.id} className="card" style={{border:`1.5px solid ${RING_ACCENT[contact.ring]}22`}}
+      onClick={()=>setSelected(selected?.id===contact.id?null:contact)}>
+      <div style={{flex:1}}>
+        <div style={{fontWeight:700,fontSize:14}}>{contact.firstName} {contact.lastName}</div>
+        {contact.organization&&<div style={{fontSize:12,opacity:0.7,marginTop:2}}>{contact.organization}</div>}
+        <div style={{display:"flex",gap:6,marginTop:4,flexWrap:"wrap"}}>
+          {contact.channel&&<span className="badge" style={{background:`${RING_ACCENT[contact.ring]}15`,color:RING_ACCENT[contact.ring]}}>{contact.channel}</span>}
+          {contact.knownNDP==="Yes"&&<span className="badge" style={{background:"#F5822015",color:"#F58220"}}>NDP</span>}
+          <span className="badge" style={{background:sb.bg,color:sb.color}}>{sb.text}</span>
+        </div>
+      </div>
+      <div style={{display:"flex",gap:4,marginLeft:8,flexShrink:0}}>
+        <button className="btn btn-outline" style={{padding:"3px 8px",fontSize:11}} onClick={e=>{e.stopPropagation();openEdit(contact);}}>Edit</button>
+        <select value={contact.ring} onClick={e=>e.stopPropagation()} onChange={e=>move(contact.id,parseInt(e.target.value))}
+          className="inp" style={{padding:"3px 4px",fontSize:11,width:"auto"}}>
+          {RINGS.map(r=><option key={r.id} value={r.id}>{r.label}</option>)}
+        </select>
+      </div>
+    </div>);
+  };
+
+  // ── Main ──
+  return(
+    <div className="container">
+      {/* Header */}
+      <div style={{marginBottom:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            <img src={NDP_LOGO} alt="NDP / NPD" style={{height:28}}/>
+            <div>
+              <h1 style={{fontSize:22,color:"#58595B",lineHeight:1.2}}>Relationship Mapping</h1>
+              <p style={{fontSize:12,color:"#58595B",margin:"2px 0 0",opacity:0.6}}>
+                <strong style={{color:"#F58220"}}>{organizer}</strong>
+                {contactedCount>0&&<span style={{color:"#2a7d4f",marginLeft:8}}>{contactedCount} contacted</span>}
+                {syncState!=="idle"&&syncLabel&&<span className={`sync-indicator ${syncClass}`} style={{marginLeft:8}}>{syncLabel}</span>}
+              </p>
+            </div>
+          </div>
+          <div style={{display:"flex",gap:6,marginTop:4}}>
+            <button className="btn btn-primary" style={{padding:"5px 14px"}} onClick={()=>doSync()}>Sync</button>
+            <button className="btn btn-outline" style={{padding:"5px 10px"}} onClick={()=>setShowSettings(!showSettings)}>\u2699</button>
+          </div>
+        </div>
+      </div>
+
+      {/* Settings */}
+      {showSettings&&(
+        <div style={{background:"#fff",border:"1.5px solid #E2E3E4",borderRadius:10,padding:16,marginBottom:14}}>
+          <div style={{fontWeight:700,fontSize:14,marginBottom:10}}>Settings</div>
+          <div style={{display:"flex",gap:8,marginBottom:10}}>
+            <div style={{flex:1}}><label className="lbl">First name</label>
+              <input className="inp" value={orgFirst} onChange={e=>setOrgFirst(e.target.value)}/></div>
+            <div style={{flex:1}}><label className="lbl">Last name</label>
+              <input className="inp" value={orgLast} onChange={e=>setOrgLast(e.target.value)}/></div>
+          </div>
+          <label className="lbl">Google Sheets Sync URL</label>
+          <input className="inp" value={syncUrl} onChange={e=>setSyncUrl(e.target.value)}
+            placeholder="https://script.google.com/macros/s/…/exec" style={{marginBottom:8}}/>
+          <p style={{fontSize:11,color:"#58595B",opacity:0.5,margin:"0 0 8px",lineHeight:1.4}}>
+            Data auto-syncs 3 seconds after each change. Press Sync to push immediately.</p>
+          {lastSync&&<p style={{fontSize:11,color:"#58595B",opacity:0.4}}>Last sync: {new Date(lastSync).toLocaleString()}</p>}
+          <button className="btn btn-outline" style={{marginTop:8}} onClick={()=>setShowSettings(false)}>Done</button>
+        </div>
+      )}
+
+      {/* Controls */}
+      <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center",justifyContent:"space-between"}}>
+        <div style={{display:"flex",gap:6}}>
+          {["map","list"].map(v=>
+            <button key={v} className={`btn btn-outline ${view===v?"active":""}`} onClick={()=>setView(v)}>
+              {v==="map"?"Map":"List"}</button>
+          )}
+        </div>
+        <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+          <select className="inp" style={{width:"auto",padding:"5px 8px",fontSize:12}} value={filterCh} onChange={e=>setFilterCh(e.target.value)}>
+            <option value="All">All Channels</option>
+            {CHANNELS.map(ch=><option key={ch} value={ch}>{ch}</option>)}
+          </select>
+          <select className="inp" style={{width:"auto",padding:"5px 8px",fontSize:12}} value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}>
+            <option value="All">All Status</option>
+            <option value="Not Contacted">Not Contacted</option>
+            <option value="Contacted">Contacted</option>
+          </select>
+          {contacts.length>0&&
+            <button className="btn btn-outline" onClick={exportCSV}>CSV</button>
+          }
+        </div>
+      </div>
+
+      {/* Ring summary */}
+      <div className="ring-summary">
+        {RINGS.map((ring,i)=>
+          <div key={ring.id} className="ring-box" style={{border:`1.5px solid ${RING_ACCENT[i]}30`}} onClick={()=>openAdd(ring.id)}>
+            <div style={{fontSize:18,fontWeight:700,color:RING_ACCENT[i]}}>{rc[i]}</div>
+            <div style={{fontSize:9,color:"#58595B",fontWeight:600,lineHeight:1.2}}>{ring.label}</div>
+          </div>
+        )}
+      </div>
+
+      {view==="map"&&renderMap()}
+
+      {/* Selected detail */}
+      {view==="map"&&selected&&(()=>{
+        const sb=statusBadge(selected);
+        return(
+        <div style={{background:"#fff",border:`2px solid ${RING_ACCENT[selected.ring]}`,borderRadius:10,padding:14,marginTop:8}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+            <div>
+              <div style={{fontWeight:700,fontSize:16}}>{displayName(selected)}</div>
+              {selected.organization&&<div style={{fontSize:13,opacity:0.7}}>{selected.organization}</div>}
+            </div>
+            <span className="badge" style={{background:`${RING_ACCENT[selected.ring]}15`,color:RING_ACCENT[selected.ring],fontWeight:700}}>
+              {RINGS[selected.ring].label}</span>
+          </div>
+          {selected.channel&&<div style={{fontSize:12,opacity:0.7,marginTop:6}}>Channel: {selected.channel}</div>}
+          {selected.phone&&<div style={{fontSize:12,opacity:0.7,marginTop:2}}>Phone: {selected.phone}</div>}
+          {selected.email&&<div style={{fontSize:12,opacity:0.7,marginTop:2}}>Email: {selected.email}</div>}
+          <div style={{marginTop:8,padding:8,background:sb.bg,borderRadius:6}}>
+            <span style={{fontSize:12,fontWeight:700,color:sb.color}}>{sb.text}</span>
+            {selected.contactMethod&&<span style={{fontSize:11,marginLeft:8}}>via {selected.contactMethod}</span>}
+            {selected.contactDate&&<span style={{fontSize:11,marginLeft:8,opacity:0.6}}>{selected.contactDate}</span>}
+            {selected.contactNotes&&<div style={{fontSize:12,marginTop:4,fontStyle:"italic"}}>{selected.contactNotes}</div>}
+          </div>
+          {selected.notes&&<div style={{fontSize:12,marginTop:6,fontStyle:"italic",opacity:0.7}}>{selected.notes}</div>}
+          <div style={{display:"flex",gap:8,marginTop:10,flexWrap:"wrap"}}>
+            <button className="btn btn-outline active" onClick={()=>openEdit(selected)}>Edit</button>
+            <select className="inp" style={{width:"auto",padding:"5px 8px",fontSize:12}} value={selected.ring}
+              onChange={e=>{const nr=parseInt(e.target.value);move(selected.id,nr);setSelected({...selected,ring:nr});}}>
+              {RINGS.map(r=><option key={r.id} value={r.id}>Move to: {r.label}</option>)}
+            </select>
+            <button className="btn" style={{border:"1.5px solid #cc3333",color:"#cc3333",background:"#cc333310",marginLeft:"auto"}}
+              onClick={()=>del(selected.id)}>Delete</button>
+          </div>
+        </div>);
+      })()}
+
+      {/* List view */}
+      {view==="list"&&(
+        <div style={{marginTop:8}}>
+          {RINGS.map((ring,idx)=>{
+            const rcs=sortedContacts(filtered.filter(c=>c.ring===ring.id));
+            if(rcs.length===0&&(filterCh!=="All"||filterStatus!=="All"))return null;
+            return(
+              <div key={ring.id} style={{marginBottom:16}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                  <div>
+                    <span style={{fontWeight:700,fontSize:14,color:RING_ACCENT[idx]}}>{ring.label}</span>
+                    <span style={{fontSize:11,marginLeft:6,opacity:0.5}}>{ring.desc}</span>
+                  </div>
+                  <button style={{background:RING_ACCENT[idx],color:"#fff",border:"none",borderRadius:"50%",
+                    width:22,height:22,fontSize:16,lineHeight:"20px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}
+                    onClick={()=>openAdd(ring.id)}>+</button>
+                </div>
+                {rcs.length===0?
+                  <div style={{textAlign:"center",padding:16,opacity:0.4,fontSize:12,border:"1.5px dashed #E2E3E4",borderRadius:8}}>
+                    No contacts yet — click + to add</div>
+                :rcs.map(renderCard)}
+              </div>);
+          })}
+        </div>
+      )}
+
+      {/* Form modal */}
+      {showForm&&(
+        <div className="modal-overlay" onClick={()=>setShowForm(false)}>
+          <div className="modal" onClick={e=>e.stopPropagation()}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+              <h2 style={{fontSize:18,color:RING_ACCENT[activeRing]}}>
+                {editingId?"Edit Contact":`Add to ${RINGS[activeRing].label}`}</h2>
+              <button onClick={()=>setShowForm(false)} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#58595B"}}>\u00d7</button>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              <div style={{display:"flex",gap:8}}>
+                <div style={{flex:1}}><label className="lbl">First name *</label>
+                  <input className="inp" value={formData.firstName} onChange={e=>setFormData({...formData,firstName:e.target.value})} placeholder="First" autoFocus/></div>
+                <div style={{flex:1}}><label className="lbl">Last name *</label>
+                  <input className="inp" value={formData.lastName} onChange={e=>setFormData({...formData,lastName:e.target.value})} placeholder="Last"/></div>
+              </div>
+              <div><label className="lbl">Organization / Affiliation</label>
+                <input className="inp" value={formData.organization} onChange={e=>setFormData({...formData,organization:e.target.value})} placeholder="Union local, group, employer\u2026"/></div>
+              <div><label className="lbl">Channel</label>
+                <select className="inp" value={formData.channel} onChange={e=>setFormData({...formData,channel:e.target.value})}>
+                  <option value="">Select\u2026</option>
+                  {CHANNELS.map(ch=><option key={ch} value={ch}>{ch}</option>)}
+                </select></div>
+              <div style={{display:"flex",gap:8}}>
+                <div style={{flex:1}}><label className="lbl">Phone</label>
+                  <input className="inp" type="tel" value={formData.phone} onChange={e=>setFormData({...formData,phone:e.target.value})}/></div>
+                <div style={{flex:1}}><label className="lbl">Email</label>
+                  <input className="inp" type="email" value={formData.email} onChange={e=>setFormData({...formData,email:e.target.value})}/></div>
+              </div>
+              <div><label className="lbl">Known NDP Connection</label>
+                <div style={{display:"flex",gap:6}}>
+                  {["Yes","No","Unknown"].map(v=>
+                    <button key={v} className={`btn btn-outline ${formData.knownNDP===v?"active":""}`} style={{flex:1,padding:"6px 0"}}
+                      onClick={()=>setFormData({...formData,knownNDP:v})}>{v}</button>
+                  )}</div></div>
+              <div style={{borderTop:"1.5px solid #E2E3E4",paddingTop:10,marginTop:4}}>
+                <label className="lbl" style={{color:"#F58220",fontSize:12,marginBottom:8}}>Outreach Tracking</label>
+                <div style={{display:"flex",gap:6,marginBottom:10}}>
+                  {["Not Contacted","Contacted"].map(v=>
+                    <button key={v} className="btn" style={{flex:1,padding:"6px 0",
+                      border:formData.outreachStatus===v?"1.5px solid #2a7d4f":"1.5px solid #E2E3E4",
+                      background:formData.outreachStatus===v?"#2a7d4f10":"#fff",
+                      color:formData.outreachStatus===v?"#2a7d4f":"#58595B"}}
+                      onClick={()=>setFormData({...formData,outreachStatus:v})}>{v}</button>
+                  )}
+                </div>
+                {formData.outreachStatus==="Contacted"&&(
+                  <div className="outreach-panel">
+                    <div style={{display:"flex",gap:8}}>
+                      <div style={{flex:1}}><label className="lbl">Method</label>
+                        <select className="inp" value={formData.contactMethod} onChange={e=>setFormData({...formData,contactMethod:e.target.value})}>
+                          <option value="">Select\u2026</option>
+                          {METHODS.map(m=><option key={m} value={m}>{m}</option>)}
+                        </select></div>
+                      <div style={{flex:1}}><label className="lbl">Date</label>
+                        <input className="inp" type="date" value={formData.contactDate} onChange={e=>setFormData({...formData,contactDate:e.target.value})}/></div>
+                    </div>
+                    <div><label className="lbl">Result</label>
+                      <select className="inp" value={formData.contactResult} onChange={e=>setFormData({...formData,contactResult:e.target.value})}>
+                        <option value="">Select\u2026</option>
+                        {RESULTS.map(r=><option key={r} value={r}>{r}</option>)}
+                      </select></div>
+                    <div><label className="lbl">Contact Notes</label>
+                      <textarea className="inp" value={formData.contactNotes} onChange={e=>setFormData({...formData,contactNotes:e.target.value})}
+                        placeholder="What was discussed? Any follow-up needed?" rows={2} style={{resize:"vertical"}}/></div>
+                  </div>
+                )}
+              </div>
+              {editingId&&<div><label className="lbl">Ring</label>
+                <select className="inp" value={activeRing} onChange={e=>setActiveRing(parseInt(e.target.value))}>
+                  {RINGS.map(r=><option key={r.id} value={r.id}>{r.label}</option>)}
+                </select></div>}
+              <div><label className="lbl">Notes</label>
+                <textarea className="inp" value={formData.notes} onChange={e=>setFormData({...formData,notes:e.target.value})}
+                  placeholder="How do you know them? What issues do they care about?" rows={3} style={{resize:"vertical"}}/></div>
+            </div>
+            <div style={{display:"flex",gap:8,marginTop:16}}>
+              <button className="btn btn-primary" onClick={save} disabled={!formData.firstName.trim()||!formData.lastName.trim()}
+                style={{flex:1,padding:"10px 0",fontSize:14,opacity:(formData.firstName.trim()&&formData.lastName.trim())?1:0.4}}>
+                {editingId?"Save Changes":"Add Contact"}</button>
+              {editingId&&<button className="btn" style={{padding:"10px 16px",fontSize:14,border:"1.5px solid #cc3333",color:"#cc3333",background:"#fff"}}
+                onClick={()=>del(editingId)}>Delete</button>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{textAlign:"center",padding:"16px 0 8px",fontSize:11,opacity:0.4}}>
+        {contacts.length} contact{contacts.length!==1?"s":""} mapped by {organizer}
+        {contactedCount>0&&` \u00b7 ${contactedCount} contacted`}
+      </div>
+      {contacts.length>0&&
+        <div style={{textAlign:"center",paddingBottom:16}}>
+          <button onClick={()=>{if(confirm("Clear all your contacts? Export first.")){setContacts([]);setSelected(null);}}}
+            style={{background:"none",border:"none",fontSize:11,color:"#E2E3E4",cursor:"pointer",textDecoration:"underline"}}>
+            Reset my data</button>
+        </div>
+      }
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
+// Register service worker
+if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js").catch(console.error)}
+</script>
+</body>
+</html>
