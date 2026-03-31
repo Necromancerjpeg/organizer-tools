@@ -12,19 +12,19 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:Roboto,'Segoe UI',sans-serif;background:#F5F3F0;color:#58595B;-webkit-font-smoothing:antialiased}
 h1,h2{font-family:'Source Serif 4',serif}
-.container{max-width:600px;margin:0 auto;padding:12px;min-height:100vh}
-.lbl{display:block;font-size:11px;font-weight:600;color:#58595B;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px;font-family:Roboto,sans-serif}
-.inp{width:100%;padding:8px 10px;font-size:14px;border:1.5px solid #E2E3E4;border-radius:6px;outline:none;font-family:Roboto,sans-serif;box-sizing:border-box;color:#58595B}
+.container{max-width:880px;margin:0 auto;padding:12px;min-height:100vh}
+.lbl{display:block;font-size:12px;font-weight:600;color:#58595B;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px;font-family:Roboto,sans-serif}
+.inp{width:100%;padding:10px 12px;font-size:15px;border:1.5px solid #E2E3E4;border-radius:6px;outline:none;font-family:Roboto,sans-serif;box-sizing:border-box;color:#58595B}
 .inp:focus{border-color:#F58220}
-.btn{padding:5px 14px;font-size:12px;font-weight:600;border-radius:6px;cursor:pointer;font-family:Roboto,sans-serif;transition:opacity 0.15s}
+.btn{padding:6px 16px;font-size:13px;font-weight:600;border-radius:6px;cursor:pointer;font-family:Roboto,sans-serif;transition:opacity 0.15s}
 .btn:hover{opacity:0.85}
 .btn-primary{background:#F58220;color:#fff;border:none}
 .btn-outline{background:none;border:1.5px solid #E2E3E4;color:#58595B}
 .btn-outline.active{border-color:#F58220;background:#F5822010;color:#F58220}
 .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px}
 .modal{background:#fff;border-radius:12px;padding:20px;width:100%;max-width:440px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
-.badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;display:inline-block}
-.ring-summary{display:flex;gap:4px;margin-bottom:14px}
+.badge{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600;display:inline-block}
+.ring-summary{display:flex;gap:6px;margin-bottom:14px}
 .ring-box{flex:1;text-align:center;padding:8px 4px;background:#fff;border-radius:6px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
 .card{background:#fff;border-radius:8px;padding:10px 14px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:flex-start;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
 .sync-indicator{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:2px 8px;border-radius:10px}
@@ -34,6 +34,12 @@ h1,h2{font-family:'Source Serif 4',serif}
 .sync-error{background:#cc333315;color:#cc3333}
 .outreach-panel{display:flex;flex-direction:column;gap:8px;padding:10px;background:#f9f9f9;border-radius:8px}
 @media(max-width:400px){.container{padding:10px}}
+@media(min-width:768px){
+  .container{padding:20px 24px}
+  .ring-box{padding:12px 6px}
+  .card{padding:14px 18px;margin-bottom:8px}
+  .modal{max-width:520px;padding:24px}
+}
 </style>
 </head>
 <body>
@@ -249,21 +255,21 @@ function App(){
 
   // ── Map ──
   const renderMap=()=>{
-    const size=520,cx=size/2,cy=size/2,radii=[52,118,184,250];
-    const bandInner=[10,62,128,194],bandOuter=[42,108,174,240];
-    const labelY=[cy-38,cy-90,cy-155,cy-222];
+    const size=600,cx=size/2,cy=size/2,radii=[72,144,216,288];
+    const bandInner=[16,84,156,228],bandOuter=[60,132,204,276];
+    const labelY=[cy-48,cy-112,cy-184,cy-258];
     return(
     <div style={{display:"flex",justifyContent:"center",padding:"4px 0"}}>
-      <svg viewBox={`0 0 ${size} ${size}`} style={{width:"100%",maxWidth:520,height:"auto"}}>
+      <svg viewBox={`0 0 ${size} ${size}`} style={{width:"100%",maxWidth:600,height:"auto"}}>
         {[...RINGS].reverse().map((ring,i)=>{const ri=3-i;
           return <circle key={ring.id} cx={cx} cy={cy} r={radii[ri]} fill={ring.bg} stroke={RING_ACCENT[ri]}
             strokeWidth={1.5} strokeDasharray={ri===3?"6 4":"none"} style={{cursor:"pointer"}} onClick={()=>openAdd(ring.id)}/>;
         })}
-        <image href={NDP_LOGO} x={cx-35} y={cy-10} width={70} height={13} opacity={0.8} preserveAspectRatio="xMidYMid meet"/>
-        <text x={cx} y={cy+12} textAnchor="middle" fill="#58595B" fontSize="7" fontFamily="Roboto,sans-serif">click circle to add</text>
+        <image href={NDP_LOGO} x={cx-40} y={cy-12} width={80} height={15} opacity={0.8} preserveAspectRatio="xMidYMid meet"/>
+        <text x={cx} y={cy+16} textAnchor="middle" fill="#58595B" fontSize="9" fontFamily="Roboto,sans-serif">click circle to add</text>
         {RINGS.map((ring,i)=>
           <text key={"l"+ring.id} x={cx} y={labelY[i]} textAnchor="middle" fill={ring.color}
-            fontSize="9" fontWeight="600" fontFamily="Roboto,sans-serif" style={{pointerEvents:"none"}}>
+            fontSize="11" fontWeight="600" fontFamily="Roboto,sans-serif" style={{pointerEvents:"none"}}>
             {ring.label} ({rc[i]})</text>
         )}
         {filtered.map(contact=>{
@@ -275,9 +281,9 @@ function App(){
           const contacted=(contact.outreachStatus||"Not Contacted")==="Contacted";
           return(
             <g key={contact.id} style={{cursor:"pointer"}} onClick={e=>{e.stopPropagation();setSelected(isSel?null:contact);}}>
-              <circle cx={x} cy={y} r={isSel?14:10} fill={isSel?clr:contacted?"#e8f5e9":"white"} stroke={contacted?"#2a7d4f":clr} strokeWidth={2}/>
+              <circle cx={x} cy={y} r={isSel?16:12} fill={isSel?clr:contacted?"#e8f5e9":"white"} stroke={contacted?"#2a7d4f":clr} strokeWidth={2}/>
               <text x={x} y={y+1} textAnchor="middle" dominantBaseline="middle" fill={isSel?"white":clr}
-                fontSize="7" fontWeight="700" fontFamily="Roboto,sans-serif" style={{pointerEvents:"none"}}>
+                fontSize="9" fontWeight="700" fontFamily="Roboto,sans-serif" style={{pointerEvents:"none"}}>
                 {initials(contact)}</text>
             </g>);
         })}
@@ -292,8 +298,8 @@ function App(){
     <div key={contact.id} className="card" style={{border:`1.5px solid ${RING_ACCENT[contact.ring]}22`}}
       onClick={()=>setSelected(selected?.id===contact.id?null:contact)}>
       <div style={{flex:1}}>
-        <div style={{fontWeight:700,fontSize:14}}>{contact.firstName} {contact.lastName}</div>
-        {contact.organization&&<div style={{fontSize:12,opacity:0.7,marginTop:2}}>{contact.organization}</div>}
+        <div style={{fontWeight:700,fontSize:16}}>{contact.firstName} {contact.lastName}</div>
+        {contact.organization&&<div style={{fontSize:13,opacity:0.7,marginTop:2}}>{contact.organization}</div>}
         <div style={{display:"flex",gap:6,marginTop:4,flexWrap:"wrap"}}>
           {contact.channel&&<span className="badge" style={{background:`${RING_ACCENT[contact.ring]}15`,color:RING_ACCENT[contact.ring]}}>{contact.channel}</span>}
           {contact.knownNDP==="Yes"&&<span className="badge" style={{background:"#F5822015",color:"#F58220"}}>NDP</span>}
@@ -302,9 +308,9 @@ function App(){
         </div>
       </div>
       <div style={{display:"flex",gap:4,marginLeft:8,flexShrink:0}}>
-        <button className="btn btn-outline" style={{padding:"3px 8px",fontSize:11}} onClick={e=>{e.stopPropagation();openEdit(contact);}}>Edit</button>
+        <button className="btn btn-outline" style={{padding:"4px 10px",fontSize:12}} onClick={e=>{e.stopPropagation();openEdit(contact);}}>Edit</button>
         <select value={contact.ring} onClick={e=>e.stopPropagation()} onChange={e=>move(contact.id,parseInt(e.target.value))}
-          className="inp" style={{padding:"3px 4px",fontSize:11,width:"auto"}}>
+          className="inp" style={{padding:"4px 6px",fontSize:12,width:"auto"}}>
           {RINGS.map(r=><option key={r.id} value={r.id}>{r.label}</option>)}
         </select>
       </div>
@@ -320,8 +326,8 @@ function App(){
           <div style={{display:"flex",alignItems:"center",gap:12}}>
             <img src={NDP_LOGO} alt="NDP / NPD" style={{height:28}}/>
             <div>
-              <h1 style={{fontSize:22,color:"#fff",lineHeight:1.2}}>Relationship Mapping</h1>
-              <p style={{fontSize:12,color:"#ccc",margin:"2px 0 0"}}>
+              <h1 style={{fontSize:26,color:"#fff",lineHeight:1.2}}>Relationship Mapping</h1>
+              <p style={{fontSize:13,color:"#ccc",margin:"2px 0 0"}}>
                 <strong style={{color:"#F58220"}}>{organizer}</strong>
                 {contactedCount>0&&<span style={{color:"#7dcea0",marginLeft:8}}>{contactedCount} contacted</span>}
                 {syncState!=="idle"&&syncLabel&&<span className={`sync-indicator ${syncClass}`} style={{marginLeft:8}}>{syncLabel}</span>}
@@ -364,11 +370,11 @@ function App(){
           )}
         </div>
         <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
-          <select className="inp" style={{width:"auto",padding:"5px 8px",fontSize:12}} value={filterCh} onChange={e=>setFilterCh(e.target.value)}>
+          <select className="inp" style={{width:"auto",padding:"6px 10px",fontSize:14}} value={filterCh} onChange={e=>setFilterCh(e.target.value)}>
             <option value="All">All Channels</option>
             {CHANNELS.map(ch=><option key={ch} value={ch}>{ch}</option>)}
           </select>
-          <select className="inp" style={{width:"auto",padding:"5px 8px",fontSize:12}} value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}>
+          <select className="inp" style={{width:"auto",padding:"6px 10px",fontSize:14}} value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}>
             <option value="All">All Status</option>
             <option value="Not Contacted">Not Contacted</option>
             <option value="Contacted">Contacted</option>
@@ -383,8 +389,8 @@ function App(){
       <div className="ring-summary">
         {RINGS.map((ring,i)=>
           <div key={ring.id} className="ring-box" style={{border:`1.5px solid ${RING_ACCENT[i]}40`,background:`${RING_ACCENT[i]}08`}} onClick={()=>openAdd(ring.id)}>
-            <div style={{fontSize:20,fontWeight:700,color:RING_ACCENT[i]}}>{rc[i]}</div>
-            <div style={{fontSize:9,color:"#58595B",fontWeight:600,lineHeight:1.2}}>{ring.label}</div>
+            <div style={{fontSize:24,fontWeight:700,color:RING_ACCENT[i]}}>{rc[i]}</div>
+            <div style={{fontSize:11,color:"#58595B",fontWeight:600,lineHeight:1.2}}>{ring.label}</div>
           </div>
         )}
       </div>
@@ -398,16 +404,16 @@ function App(){
         <div style={{background:"#fff",border:`2px solid ${RING_ACCENT[selected.ring]}`,borderRadius:10,padding:14,marginTop:8}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
             <div>
-              <div style={{fontWeight:700,fontSize:16}}>{displayName(selected)}</div>
-              {selected.organization&&<div style={{fontSize:13,opacity:0.7}}>{selected.organization}</div>}
+              <div style={{fontWeight:700,fontSize:18}}>{displayName(selected)}</div>
+              {selected.organization&&<div style={{fontSize:14,opacity:0.7}}>{selected.organization}</div>}
             </div>
             <span className="badge" style={{background:`${RING_ACCENT[selected.ring]}15`,color:RING_ACCENT[selected.ring],fontWeight:700}}>
               {RINGS[selected.ring].label}</span>
           </div>
-          {selected.channel&&<div style={{fontSize:12,opacity:0.7,marginTop:6}}>Channel: {selected.channel}</div>}
-          {selected.phone&&<div style={{fontSize:12,opacity:0.7,marginTop:2}}>Phone: {selected.phone}</div>}
-          {selected.email&&<div style={{fontSize:12,opacity:0.7,marginTop:2}}>Email: {selected.email}</div>}
-          {selected.postalCode&&<div style={{fontSize:12,opacity:0.7,marginTop:2}}>Postal Code: {selected.postalCode}</div>}
+          {selected.channel&&<div style={{fontSize:14,opacity:0.7,marginTop:6}}>Channel: {selected.channel}</div>}
+          {selected.phone&&<div style={{fontSize:14,opacity:0.7,marginTop:2}}>Phone: {selected.phone}</div>}
+          {selected.email&&<div style={{fontSize:14,opacity:0.7,marginTop:2}}>Email: {selected.email}</div>}
+          {selected.postalCode&&<div style={{fontSize:14,opacity:0.7,marginTop:2}}>Postal Code: {selected.postalCode}</div>}
           <div style={{marginTop:8,padding:8,background:sb.bg,borderRadius:6}}>
             <span style={{fontSize:12,fontWeight:700,color:sb.color}}>{sb.text}</span>
             {selected.contactMethod&&<span style={{fontSize:11,marginLeft:8}}>via {selected.contactMethod}</span>}
@@ -437,8 +443,8 @@ function App(){
               <div key={ring.id} style={{marginBottom:16}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
                   <div>
-                    <span style={{fontWeight:700,fontSize:14,color:RING_ACCENT[idx]}}>{ring.label}</span>
-                    <span style={{fontSize:11,marginLeft:6,opacity:0.5}}>{ring.desc}</span>
+                    <span style={{fontWeight:700,fontSize:16,color:RING_ACCENT[idx]}}>{ring.label}</span>
+                    <span style={{fontSize:13,marginLeft:6,opacity:0.5}}>{ring.desc}</span>
                   </div>
                   <button style={{background:RING_ACCENT[idx],color:"#fff",border:"none",borderRadius:"50%",
                     width:22,height:22,fontSize:16,lineHeight:"20px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}
@@ -458,7 +464,7 @@ function App(){
         <div className="modal-overlay" onClick={()=>setShowForm(false)}>
           <div className="modal" onClick={e=>e.stopPropagation()}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-              <h2 style={{fontSize:18,color:RING_ACCENT[activeRing]}}>
+              <h2 style={{fontSize:20,color:RING_ACCENT[activeRing]}}>
                 {editingId?"Edit Contact":`Add to ${RINGS[activeRing].label}`}</h2>
               <button onClick={()=>setShowForm(false)} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#58595B"}}>{"\u00d7"}</button>
             </div>
@@ -470,10 +476,10 @@ function App(){
                   <input className="inp" value={formData.lastName} onChange={e=>setFormData({...formData,lastName:e.target.value})} placeholder="Last"/></div>
               </div>
               <div><label className="lbl">Organization / Affiliation</label>
-                <input className="inp" value={formData.organization} onChange={e=>setFormData({...formData,organization:e.target.value})} placeholder="Union local, group, employer\u2026"/></div>
+                <input className="inp" value={formData.organization} onChange={e=>setFormData({...formData,organization:e.target.value})} placeholder="Union local, group, employer…"/></div>
               <div><label className="lbl">Channel</label>
                 <select className="inp" value={formData.channel} onChange={e=>setFormData({...formData,channel:e.target.value})}>
-                  <option value="">Select\u2026</option>
+                  <option value="">Select…</option>
                   {CHANNELS.map(ch=><option key={ch} value={ch}>{ch}</option>)}
                 </select></div>
               <div style={{display:"flex",gap:8}}>
@@ -506,7 +512,7 @@ function App(){
                     <div style={{display:"flex",gap:8}}>
                       <div style={{flex:1}}><label className="lbl">Method</label>
                         <select className="inp" value={formData.contactMethod} onChange={e=>setFormData({...formData,contactMethod:e.target.value})}>
-                          <option value="">Select\u2026</option>
+                          <option value="">Select…</option>
                           {METHODS.map(m=><option key={m} value={m}>{m}</option>)}
                         </select></div>
                       <div style={{flex:1}}><label className="lbl">Date</label>
@@ -514,7 +520,7 @@ function App(){
                     </div>
                     <div><label className="lbl">Result</label>
                       <select className="inp" value={formData.contactResult} onChange={e=>setFormData({...formData,contactResult:e.target.value})}>
-                        <option value="">Select\u2026</option>
+                        <option value="">Select…</option>
                         {RESULTS.map(r=><option key={r} value={r}>{r}</option>)}
                       </select></div>
                     <div><label className="lbl">Contact Notes</label>
@@ -542,9 +548,9 @@ function App(){
         </div>
       )}
 
-      <div style={{textAlign:"center",padding:"16px 0 8px",fontSize:11,opacity:0.4}}>
+      <div style={{textAlign:"center",padding:"16px 0 8px",fontSize:13,opacity:0.4}}>
         {contacts.length} contact{contacts.length!==1?"s":""} mapped by {organizer}
-        {contactedCount>0&&` \u00b7 ${contactedCount} contacted`}
+        {contactedCount>0&&` · ${contactedCount} contacted`}
       </div>
       {contacts.length>0&&
         <div style={{textAlign:"center",paddingBottom:16}}>
@@ -563,4 +569,5 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js").catch(console.error)}
 </script>
 </body>
+</html>
 </html>
